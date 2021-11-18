@@ -718,7 +718,8 @@ MyProcess* Git::getFile(SCRef fileSha, QObject* receiver, QByteArray* result, SC
 	*/
 	if (fileSha == ZERO_SHA)
 
-#ifdef Q_OS_WIN32
+//#ifdef Q_OS_WIN32
+#if !defined(Q_OS_WIN32) && !defined(Q_OS_OS2)
     {
 		QString winPath = quote(fileName);
 		winPath.replace("/", "\\");

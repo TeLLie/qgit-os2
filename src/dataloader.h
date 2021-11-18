@@ -18,7 +18,7 @@ class UnbufferedTemporaryFile;
 
 // data exchange facility with 'git log' could be based on QProcess or on
 // a temporary file (default). Uncomment following line to use QProcess
-// #define USE_QPROCESS
+#define USE_QPROCESS
 
 class DataLoader : public QProcess {
 Q_OBJECT

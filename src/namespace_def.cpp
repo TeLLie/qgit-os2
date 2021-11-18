@@ -25,7 +25,8 @@
 #include "git.h"
 #include "annotate.h"
 
-#ifdef Q_OS_WIN32 // *********  platform dependent code ******
+//#ifdef Q_OS_WIN32 // *********  platform dependent code ******
+#if !defined(Q_OS_WIN32) && !defined(Q_OS_OS2)
 
 const QString QGit::SCRIPT_EXT = ".bat";
 
@@ -418,14 +419,16 @@ bool QGit::writeToFile(SCRef fileName, SCRef data, bool setExecutable) {
 	QString data2(data);
 	QTextStream stream(&file);
 
-#ifdef Q_OS_WIN32
+//#ifdef Q_OS_WIN32
+#if !defined(Q_OS_WIN32) && !defined(Q_OS_OS2)
 	data2.replace("\r\n", "\n"); // change windows CRLF to linux
 	data2.replace("\n", "\r\n"); // then change all linux CRLF to windows
 #endif
 	stream << data2;
 	file.close();
 
-#ifndef Q_OS_WIN32
+//#ifndef Q_OS_WIN32
+#if !defined(Q_OS_WIN32) && !defined(Q_OS_OS2)
 	if (setExecutable)
 		chmod(fileName.toLatin1().constData(), 0755);
 #endif
@@ -443,7 +446,8 @@ bool QGit::writeToFile(SCRef fileName, const QByteArray& data, bool setExecutabl
 	stream.writeRawData(data.constData(), data.size());
 	file.close();
 
-#ifndef Q_OS_WIN32
+//#ifndef Q_OS_WIN32
+#if !defined(Q_OS_WIN32) && !defined(Q_OS_OS2)
 	if (setExecutable)
 		chmod(fileName.toLatin1().constData(), 0755);
 #endif
