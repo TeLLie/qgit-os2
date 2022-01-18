@@ -277,8 +277,7 @@ bool DataLoader::createTemporaryFile() {
 	// redirect 'git log' output to a temporary file
 	dataFile = new UnbufferedTemporaryFile(this);
 
-//#ifndef Q_OS_WIN32
-#if !defined(Q_OS_WIN32) && !defined(Q_OS_OS2)
+#ifndef Q_OS_WIN32
 	/*
 	   For performance reasons we would like to use a tmpfs filesystem
 	   if available, this is normally mounted under '/tmp' in Linux.
