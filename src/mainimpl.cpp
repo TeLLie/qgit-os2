@@ -580,9 +580,17 @@ void MainImpl::fileList_itemDoubleClicked(QListWidgetItem* item) {
 	if (isFirst && rv->st.isMerge())
 		return;
 
-	if (testFlag(OPEN_IN_EDITOR_F, FLAGS_KEY)) {
+	QSettings settings;
+	FileDoubleClickAction action_idx = static_cast<FileDoubleClickAction>(
+		settings.value(DCLICK_ACT_KEY, VIEW_PATCH).toUInt());
+
+	if (action_idx == OPEN_IN_EDITOR) {
 		if (item && ActExternalEditor->isEnabled())
 			ActExternalEditor->activate(QAction::Trigger);
+	} else if (action_idx == OPEN_IN_DIFFER) {
+		bool isMainView = (item && item->listWidget() == rv->tab()->fileList);
+		if (isMainView && ActExternalDiff->isEnabled())
+			ActExternalDiff->activate(QAction::Trigger);
 	} else {
 		bool isMainView = (item && item->listWidget() == rv->tab()->fileList);
 		if (isMainView && ActViewDiff->isEnabled())
@@ -594,9 +602,16 @@ void MainImpl::fileList_itemDoubleClicked(QListWidgetItem* item) {
 }
 
 void MainImpl::treeView_doubleClicked(QTreeWidgetItem* item, int) {
-	if (testFlag(OPEN_IN_EDITOR_F, FLAGS_KEY)) {
+	QSettings settings;
+	FileDoubleClickAction action_idx = static_cast<FileDoubleClickAction>(
+		settings.value(DCLICK_ACT_KEY, VIEW_PATCH).toUInt());
+
+	if (action_idx == OPEN_IN_EDITOR) {
 		if (item && ActExternalEditor->isEnabled())
 			ActExternalEditor->activate(QAction::Trigger);
+	} else if (action_idx == OPEN_IN_DIFFER) {
+		if (item && ActExternalDiff->isEnabled())
+			ActExternalDiff->activate(QAction::Trigger);
 	} else {
 		if (item && ActViewFile->isEnabled())
 			ActViewFile->activate(QAction::Trigger);
@@ -2154,8 +2169,8 @@ void MainImpl::ActAbout_activated() {
 
 	static const char* aboutMsg =
 	"<p><b>QGit version " PACKAGE_VERSION "</b></p>"
-	"<p>Copyright (c) 2005, 2007, 2008 Marco Costalba<br>"
-	"Copyright (c) 2011-2021 <a href='mailto:tibirna@kde.org'>Cristian Tibirna</a></p>"
+	"<p>Copyright (c) 2005-2008 Marco Costalba<br>"
+	"Copyright (c) 2011-2022 <a href='mailto:tibirna@kde.org'>Cristian Tibirna</a></p>"
 	"<p>Use and redistribute under the terms of the<br>"
 	"<a href=\"http://www.gnu.org/licenses/old-licenses/gpl-2.0.html\">GNU General Public License Version 2</a></p>"
 	"<p>Contributors:<br>"
@@ -2187,9 +2202,9 @@ void MainImpl::ActAbout_activated() {
 	"<nobr>2018 <a href='mailto:asturm@gentoo.org'>Andreas Sturmlechner</a>,</nobr> "
 	"<nobr>2018 <a href='mailto:kde@davidedmundson.co.uk'>David Edmundson</a>,</nobr> "
 	"<nobr>2016-2018 <a href='mailto:rhaschke@techfak.uni-bielefeld.de'>Robert Haschke</a>,</nobr> "
-	"<nobr>2018 <a href='mailto:filipe.rinaldi@gmail.com'>Filipe Rinaldi</a>,</nobr> "
+	"<nobr>2018-2022 <a href='mailto:filipe.rinaldi@gmail.com'>Filipe Rinaldi</a>,</nobr> "
 	"<nobr>2018 <a href='mailto:balbusm@gmail.com'>Mateusz Balbus</a>,</nobr> "
-	"<nobr>2019 <a href='mailto:sebastian@pipping.org'>Sebastian Pipping</a>,</nobr> "
+	"<nobr>2019-2022 <a href='mailto:sebastian@pipping.org'>Sebastian Pipping</a>,</nobr> "
 	"<nobr>2019-2020 <a href='mailto:mvf@gmx.eu'>Matthias von Faber</a>,</nobr> "
     "<nobr>2019 <a href='mailto:Kevin@tigcc.ticalc.org'>Kevin Kofler</a>,</nobr> "
     "<nobr>2020 <a href='mailto:cortexspam-github@yahoo.fr'>Matthieu Muffato</a>,</nobr> "
@@ -2197,6 +2212,7 @@ void MainImpl::ActAbout_activated() {
     "<nobr>2020 <a href='mailto:jjm@keelhaul.demon.co.uk'>Jonathan Marten</a>,</nobr> "
     "<nobr>2020 <a href='mailto:yyc1992@gmail.com'>Yichao Yu</a>,</nobr> "
     "<nobr>2021 <a href='mailto:wickedsmoke@users.sourceforge.net'>Karl Robillard</a></nobr> "
+    "<nobr>2021 <a href='mailto:vchesn@gmail.com'>Vitaly Chesnokov</a></nobr> "
 	"</p>"
 
 	"<p>This version was compiled against Qt " QT_VERSION_STR "</p>";
