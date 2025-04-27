@@ -93,11 +93,6 @@ int ListView::row(SCRef sha) const {
 
 void ListView::setupGeometry() {
 
-	QPalette pl = palette();
-	pl.setColor(QPalette::Base, ODD_LINE_COL);
-	pl.setColor(QPalette::AlternateBase, EVEN_LINE_COL);
-	setPalette(pl); // does not seem to inherit application paletteAnnotate
-
 	QHeaderView* hv = header();
 	hv->setStretchLastSection(true);
 	hv->setSectionResizeMode(LOG_COL, QHeaderView::Interactive);
@@ -829,8 +824,7 @@ void ListViewDelegate::paintGraphLane(QPainter* p, int type, int x1, int x2,
 	#define CENTER_DL x2, 0  ,  45
 	#define R_CENTER m - r, h - r, d, d
 
-	static QColor const & lanePenColor = QPalette().color(QPalette::WindowText);
-	static QPen lanePen(lanePenColor, 2); // fast path here
+	static QPen lanePen(QPalette().color(QPalette::WindowText), 2); // fast path here
 
 	// arc
 	switch (type) {
@@ -991,10 +985,13 @@ void ListViewDelegate::paintGraphLane(QPainter* p, int type, int x1, int x2,
 
 void ListViewDelegate::paintGraph(QPainter* p, const QStyleOptionViewItem& opt,
                                   const QModelIndex& i) const {
-	static const QColor & baseColor = QPalette().color(QPalette::WindowText);
-	static const QColor colors[COLORS_NUM] = { baseColor, Qt::red, DARK_GREEN,
-	                                           Qt::blue, Qt::darkGray, BROWN,
-	                                           Qt::magenta, ORANGE };
+	// static const QColor & baseColor = QPalette().color(QPalette::WindowText);
+	static const QColor colors[COLORS_NUM] = {
+		QPalette().color(QPalette::WindowText),
+		Qt::red, DARK_GREEN,
+		Qt::blue, Qt::darkGray, BROWN,
+		Qt::magenta, ORANGE
+	};
 	if (opt.state & QStyle::State_Selected)
 		p->fillRect(opt.rect, opt.palette.highlight());
 	else if (i.row() & 1)

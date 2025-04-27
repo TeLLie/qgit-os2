@@ -65,10 +65,6 @@ MainImpl::MainImpl(SCRef cd, QWidget* p) : QMainWindow(p) {
 	connect(lineEditSHA, SIGNAL(returnPressed()), this, SLOT(lineEditSHA_returnPressed()));
 	connect(lineEditFilter, SIGNAL(returnPressed()), this, SLOT(lineEditFilter_returnPressed()));
 
-	// create light and dark colors for alternate background
-	ODD_LINE_COL = palette().color(QPalette::Base);
-	EVEN_LINE_COL = ODD_LINE_COL.darker(103);
-
 	// our interface to git world
 	git = new Git(this);
 	setupShortcuts();
@@ -2143,6 +2139,22 @@ void MainImpl::ActFind_activated() {
 	if (!ok || str.isEmpty())
 		return;
 
+	// Highlight all occurrences.
+	const QTextCursor origCursor = te->textCursor();
+	te->moveCursor(QTextCursor::Start);
+
+	QList<QTextEdit::ExtraSelection> extras;
+	while(te->find(str)) {
+		QTextEdit::ExtraSelection extra;
+		extra.format.setBackground(Qt::yellow);
+		extra.cursor = te->textCursor();
+		extras.append(extra);
+	}
+	te->setExtraSelections(extras);
+
+	te->setTextCursor(origCursor);
+
+	// Do the normal find().
 	textToFind = str; // update with valid data only
 	ActFindNext_activated();
 }
@@ -2170,7 +2182,7 @@ void MainImpl::ActAbout_activated() {
 	static const char* aboutMsg =
 	"<p><b>QGit version " PACKAGE_VERSION "</b></p>"
 	"<p>Copyright (c) 2005-2008 Marco Costalba<br>"
-	"Copyright (c) 2011-2022 <a href='mailto:tibirna@kde.org'>Cristian Tibirna</a></p>"
+	"Copyright (c) 2011-2025 <a href='mailto:tibirna@kde.org'>Cristian Tibirna</a></p>"
 	"<p>Use and redistribute under the terms of the<br>"
 	"<a href=\"http://www.gnu.org/licenses/old-licenses/gpl-2.0.html\">GNU General Public License Version 2</a></p>"
 	"<p>Contributors:<br>"
@@ -2202,7 +2214,7 @@ void MainImpl::ActAbout_activated() {
 	"<nobr>2018 <a href='mailto:asturm@gentoo.org'>Andreas Sturmlechner</a>,</nobr> "
 	"<nobr>2018 <a href='mailto:kde@davidedmundson.co.uk'>David Edmundson</a>,</nobr> "
 	"<nobr>2016-2018 <a href='mailto:rhaschke@techfak.uni-bielefeld.de'>Robert Haschke</a>,</nobr> "
-	"<nobr>2018-2022 <a href='mailto:filipe.rinaldi@gmail.com'>Filipe Rinaldi</a>,</nobr> "
+	"<nobr>2018-2024 <a href='mailto:filipe.rinaldi@gmail.com'>Filipe Rinaldi</a>,</nobr> "
 	"<nobr>2018 <a href='mailto:balbusm@gmail.com'>Mateusz Balbus</a>,</nobr> "
 	"<nobr>2019-2022 <a href='mailto:sebastian@pipping.org'>Sebastian Pipping</a>,</nobr> "
 	"<nobr>2019-2020 <a href='mailto:mvf@gmx.eu'>Matthias von Faber</a>,</nobr> "
@@ -2213,6 +2225,10 @@ void MainImpl::ActAbout_activated() {
     "<nobr>2020 <a href='mailto:yyc1992@gmail.com'>Yichao Yu</a>,</nobr> "
     "<nobr>2021 <a href='mailto:wickedsmoke@users.sourceforge.net'>Karl Robillard</a></nobr> "
     "<nobr>2021 <a href='mailto:vchesn@gmail.com'>Vitaly Chesnokov</a></nobr> "
+    "<nobr>2022 <a href='mailto:bits_n_bytes@gmx.de'>Frank Dietrich</a></nobr> "
+    "<nobr>2023 <a href='mailto:urban82@gmail.com'>Danilo Treffiletti</a></nobr> "
+    "<nobr>2023 <a href='mailto:urban82@gmail.com'>Magnus Holmgren</a></nobr> "
+	"<nobr>2025 <a href='mailto:tim@siosm.fr'>Thimothée Ravier</a></nobr> "
 	"</p>"
 
 	"<p>This version was compiled against Qt " QT_VERSION_STR "</p>";

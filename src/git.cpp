@@ -2170,7 +2170,7 @@ bool Git::startParseProc(SCList initCmd, FileHistory* fh, SCRef buf) {
 
 bool Git::startRevList(SCList args, FileHistory* fh) {
 
-        QString baseCmd("git log --topo-order --no-color "
+        QString baseCmd("git -c log.diffMerges=separate log --topo-order --no-color "
 
 #ifndef Q_OS_WIN32
                         "--log-size " // FIXME broken on Windows
@@ -2191,7 +2191,7 @@ bool Git::startRevList(SCList args, FileHistory* fh) {
            then, with this option, file history is truncated to
            the file deletion revision.
         */
-                initCmd << QString("-r -m -p --full-index").split(' ');
+                initCmd << QString("-r -m -p --full-index --simplify-merges").split(' ');
         } else
                 {} // initCmd << QString("--early-output"); currently disabled
 
