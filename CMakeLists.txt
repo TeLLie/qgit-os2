@@ -82,6 +82,25 @@ qt5_add_resources(RC_SRCS ${RESOURCE_FILES})
 add_executable(qgit ${CPP_SOURCES} ${UIS_HDRS} ${RC_SRCS})
 target_link_libraries(qgit Qt5::Widgets)
 
+if(OS2)
+    target_sources(${PROJECT_NAME} PRIVATE src/resources/qgit-os2.rc)
+endif()
+
+if(OS2)
+enable_language(RC)
+set(qgit_SRCS ${zint-qt_SRCS} ${CMAKE_SOURCE_DIR}/src/resources/qgit-os2.rc)
+set_source_files_properties(${CMAKE_SOURCE_DIR}/src/resources/qgit-os2.rc PROPERTIES LANGUAGE RC)
+include_directories(${CMAKE_SOURCE_DIR}/src/resources)
+endif(OS2)
+
+if(OS2)
+set_target_properties(${PROJECT_NAME} PROPERTIES
+ OS2_DEF_VENDOR "TeLLie OS2 forever"
+ OS2_DEF_PATCH "${QGIT_VERSION_MINOR}"
+ OS2_DEF_VERSION "${QGIT_VERSION}"
+ OS2_DEF_EXEType "WINDOWAPI")
+endif()
+
 
 install(TARGETS qgit DESTINATION bin)
 
