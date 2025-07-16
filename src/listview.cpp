@@ -95,9 +95,15 @@ void ListView::setupGeometry() {
 
 	QHeaderView* hv = header();
 	hv->setStretchLastSection(true);
+#if QT_VERSION >= 0x050000
 	hv->setSectionResizeMode(LOG_COL, QHeaderView::Interactive);
 	hv->setSectionResizeMode(TIME_COL, QHeaderView::Interactive);
 	hv->setSectionResizeMode(ANN_ID_COL, QHeaderView::ResizeToContents);
+#else
+	hv->setResizeMode(LOG_COL, QHeaderView::Interactive);
+	hv->setResizeMode(TIME_COL, QHeaderView::Interactive);
+	hv->setResizeMode(ANN_ID_COL, QHeaderView::ResizeToContents);
+#endif
 	hv->resizeSection(GRAPH_COL, DEF_GRAPH_COL_WIDTH);
 	hv->resizeSection(LOG_COL, DEF_LOG_COL_WIDTH);
 	hv->resizeSection(HASH_COL, DEF_HASH_COL_WIDTH);
@@ -330,7 +336,11 @@ void ListView::mouseReleaseEvent(QMouseEvent* e) {
 
 
 QPixmap ListView::pixmapFromSelection(const QStringList &revs, const QString &ref) const {
+#if QT_VERSION >= 0x060000
+	const qsizetype maxRows = 10;
+#else
 	const int maxRows = 10;
+#endif
 	const int dotdotRow = 5;
 	QStyleOptionViewItem opt; opt.initFrom(this);
 //	ListViewDelegate *lvd = dynamic_cast<ListViewDelegate*>(itemDelegate());
@@ -348,7 +358,11 @@ QPixmap ListView::pixmapFromSelection(const QStringList &revs, const QString &re
 		QStyleOptionViewItem o(opt);
 		QString dummy;
 		getTagMarkParams(dummy, o, refTypeFromName(ref), false);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
 		painter.fillRect(0, 0, fm.horizontalAdvance(ref)+2*spacing, height, o.palette.window());
+#else
+		painter.fillRect(0, 0, fm.width(ref)+2*spacing, height, o.palette.window());
+#endif
 		painter.drawText(spacing, fm.ascent()+1, ref);
 		row = 1;
 	}
@@ -428,13 +442,13 @@ struct ListView::DropInfo {
 		PATCHES  = 1 << 0,
 		REV_LIST = 1 << 1,
 		REV_RANGE = 1 << 2,
-		SAME_REPO     = 1 << 3,
+		SAME_REPO     = 1 << 3
 	};
 	enum Action {
 		PatchAction = Qt::CopyAction,
 		RebaseAction = Qt::MoveAction,
 		MoveRefAction = (Qt::LinkAction << 1) | Qt::MoveAction,
-		MergeAction = Qt::LinkAction,
+		MergeAction = Qt::LinkAction
 	};
 
 	QString sourceRepo;
@@ -520,9 +534,21 @@ void ListView::dragEnterEvent(QDragEnterEvent* e) {
 void ListView::dragMoveEvent(QDragMoveEvent* e) {
 	// When getting here, dragEnterEvent already accepted the drag in general
 
-	SCRef targetRef = refNameAt(e->pos());
+	SCRef targetRef = refNameAt(e->
+#if QT_VERSION >= 0x060000
+		position().toPoint()
+#else
+		pos()
+#endif
+	);
 	uint targetRefType = refTypeFromName(targetRef);
-	QModelIndex idx = indexAt(e->pos());
+	QModelIndex idx = indexAt(e->
+#if QT_VERSION >= 0x060000
+		position().toPoint()
+#else
+		pos()
+#endif
+	);
 	SCRef targetSHA = sha(idx.row());
 	uint   accepted_actions = DropInfo::PatchAction; // applying patches is always allowed
 	DropInfo::Action  action, default_action = DropInfo::PatchAction;
@@ -567,7 +593,11 @@ void ListView::dragMoveEvent(QDragMoveEvent* e) {
 
 	e->accept();
 	// check whether modifier keys enforce an action
+#if QT_VERSION >= 0x060000
+	switch (e->modifiers()) {
+#else
 	switch (e->keyboardModifiers()) {
+#endif
 	case Qt::ControlModifier: action = DropInfo::PatchAction; break;
 	case Qt::ShiftModifier: action = DropInfo::RebaseAction; break;
 	case Qt::AltModifier: action = DropInfo::MergeAction; break;
@@ -622,9 +652,21 @@ void ListView::dropEvent(QDropEvent *e) {
 		return;
 	}
 
-	SCRef targetRef = refNameAt(e->pos());
+	SCRef targetRef = refNameAt(e->
+#if QT_VERSION >= 0x060000
+		position().toPoint()
+#else
+		pos()
+#endif
+	);
 //	uint  targetRefType = refTypeFromName(targetRef);
-	SCRef targetSHA = sha(indexAt(e->pos()).row());
+	SCRef targetSHA = sha(indexAt(e->
+#if QT_VERSION >= 0x060000
+		position().toPoint()
+#else
+		pos()
+#endif
+	).row());
 	switch(dropInfo->action) {
 	case DropInfo::PatchAction:
 		emit applyRevisions(dropInfo->shas, dropInfo->sourceRepo);
@@ -1169,7 +1211,11 @@ QString ListView::refNameAt(const QPoint &pos)
  * Return the device pixel ratio
  */
 qreal ListViewDelegate::dpr(void) const {
-	return qApp->devicePixelRatio();
+#if QT_VERSION >= QT_VERSION_CHECK(5,6,0)
+    return qApp->devicePixelRatio();
+#else
+    return 1.0;
+#endif
 }
 
 void ListViewDelegate::addTextPixmap(QPixmap** pp, SCRef txt, const QStyleOptionViewItem& opt) const {
@@ -1189,7 +1235,9 @@ void ListViewDelegate::addTextPixmap(QPixmap** pp, SCRef txt, const QStyleOption
 			 static_cast<int>(text_height * dpr()));
 
 	QPixmap* newPm = new QPixmap(pixmapSize);
-	newPm->setDevicePixelRatio(dpr());
+#if QT_VERSION >= QT_VERSION_CHECK(5,6,0)
+    newPm->setDevicePixelRatio(dpr());
+#endif
 
 	QPainter p;
 	p.begin(newPm);
@@ -1272,7 +1320,11 @@ bool ListViewProxy::filterAcceptsRow(int source_row, const QModelIndex&) const {
 
 int ListViewProxy::setFilter(bool isOn, bool h, SCRef fl, int cn, ShaSet* s) {
 
+#if QT_VERSION >= 0x060000
+	filter = QRegularExpression::fromWildcard(fl, Qt::CaseInsensitive);
+#else
 	filter = QRegExp(fl, Qt::CaseInsensitive, QRegExp::Wildcard);
+#endif
 	colNum = cn;
 	if (s)
 		shaSet = *s;
