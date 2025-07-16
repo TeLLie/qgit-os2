@@ -74,23 +74,32 @@ MainImpl::MainImpl(SCRef cd, QWidget* p) : QMainWindow(p) {
 	setRepositoryBusy = false;
 
 	// init filter match highlighters
-	shortLogRE.setMinimal(true);
-	shortLogRE.setCaseSensitivity(Qt::CaseInsensitive);
-	longLogRE.setMinimal(true);
-	longLogRE.setCaseSensitivity(Qt::CaseInsensitive);
+	shortLogRE.setPatternOptions(QRegularExpression::CaseInsensitiveOption);
+	longLogRE.setPatternOptions(QRegularExpression::CaseInsensitiveOption);
 
 	// set-up standard revisions and files list font
 	QSettings settings;
 	QString font(settings.value(STD_FNT_KEY).toString());
 	if (font.isEmpty()) {
+#if (QT_VERSION >= QT_VERSION_CHECK(5,2,0))
 		font = QFontDatabase::systemFont(QFontDatabase::GeneralFont).toString();
+#else
+		font = QApplication::font().toString();
+#endif
 	}
 	QGit::STD_FONT.fromString(font);
 
 	// set-up typewriter (fixed width) font
 	font = settings.value(TYPWRT_FNT_KEY).toString();
 	if (font.isEmpty()) { // choose a sensible default
+#if (QT_VERSION >= QT_VERSION_CHECK(5,2,0))
 		QFont fnt = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+#else
+		QFont fnt = QApplication::font();
+		fnt.setStyleHint(QFont::TypeWriter, QFont::PreferDefault);
+		fnt.setFixedPitch(true);
+		fnt.setFamily(fnt.defaultFamily()); // the family corresponding
+#endif
 		font = fnt.toString();              // to current style hint
 	}
 	QGit::TYPE_WRITER_FONT.fromString(font);
@@ -101,10 +110,19 @@ MainImpl::MainImpl(SCRef cd, QWidget* p) : QMainWindow(p) {
 	tabWdg->addTab(rv->tabPage(), "&Rev list");
 
 	// hide close button for rev list tab
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+	// For Qt4: Use findChild to access QTabBar as tabBar() is protected
+	QTabBar* const tabBar = tabWdg->findChild<QTabBar*>();
+#else
+	// For Qt5+: Directly access tabBar()
 	QTabBar* const tabBar = tabWdg->tabBar();
+#endif
+
+if (tabBar) {
 	tabBar->setTabButton(0, QTabBar::RightSide, NULL);
 	tabBar->setTabButton(0, QTabBar::LeftSide, NULL);
-	connect(tabWdg, SIGNAL(tabCloseRequested(int)), SLOT(tabBar_tabCloseRequested(int)));
+}
+connect(tabWdg, SIGNAL(tabCloseRequested(int)), SLOT(tabBar_tabCloseRequested(int)));
 
 	// set-up file names loading progress bar
 	pbFileNamesLoading = new QProgressBar(statusBar());
@@ -273,10 +291,10 @@ void MainImpl::ActExternalDiff_activated() {
 	}
 }
 
-const QRegExp MainImpl::emptySha("0*");
+const QRegularExpression MainImpl::emptySha("0*");
 
 QString MainImpl::copyFileToDiffIfNeeded(QStringList* filenames, QString sha) {
-	if (emptySha.exactMatch(sha))
+	if (emptySha.match(sha).hasMatch())
 	{
 		return QString(curDir + "/" + rv->st.fileName());
 	}
@@ -712,7 +730,11 @@ bool MainImpl::eventFilter(QObject* obj, QEvent* ev) {
 		if (e->modifiers() == Qt::AltModifier) {
 
 			int idx = tabWdg->currentIndex();
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+			if (e->delta() < 0)
+#else
 			if (e->angleDelta().y() < 0)
+#endif
 				idx = (++idx == tabWdg->count() ? 0 : idx);
 			else
 				idx = (--idx < 0 ? tabWdg->count() - 1 : idx);
@@ -760,7 +782,7 @@ void MainImpl::applyRevisions(SCList remoteRevs, SCRef remoteRepo) {
 
 		dr.refresh();
 		if (dr.count() != 1) {
-			qDebug("ASSERT in on_droppedRevisions: found %i files "
+			qDebug("ASSERT in on_droppedRevisions: found %lli files "
 			       "in %s", dr.count(), qPrintable(dr.absolutePath()));
 			break;
 		}
@@ -1143,7 +1165,11 @@ void MainImpl::shortCutActivated() {
 	QShortcut* se = dynamic_cast<QShortcut*>(sender());
 
 	if (se) {
+#if QT_VERSION >= 0x050000
 		const QKeySequence& key = se->key();
+#else
+		const int key = se->key();
+#endif
 
 		if (key == Qt::Key_I) {
 			rv->tab()->listViewLog->on_keyUp();
@@ -1324,7 +1350,11 @@ static void prepareRefSubmenu(QMenu* menu, const QStringList& refs, const QChar 
 		QMenu* add_here = menu;
 		FOREACH_SL (pit, parts) {
 			if (pit == parts.end() - 1) break;
+	#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+			QMenu* found = add_here->findChild<QMenu*>(*pit);
+	#else
 			QMenu* found = add_here->findChild<QMenu*>(*pit, Qt::FindDirectChildrenOnly);
+	#endif
 			if(!found) {
 				found = add_here->addMenu(*pit);
 				found->setObjectName(*pit);
@@ -1617,16 +1647,30 @@ bool MainImpl::askApplyPatchParameters(bool* workDirOnly, bool* fold) {
 
 	int ret = 0;
 	if (!git->isStGITStack()) {
-		ret = QMessageBox::question(this, "Apply Patch",
-		      "Do you want to commit or just to apply changes to "
-                      "working directory?", "&Cancel", "&Working directory", "&Commit", 0, 0);
-		*workDirOnly = (ret == 1);
+		QMessageBox ret(QMessageBox::Question,
+			"Apply Patch",
+			"Do you want to commit or just to apply changes to "
+			"working directory?",
+			{}, this);
+		ret.addButton("&Cancel", QMessageBox::ButtonRole::RejectRole);
+		QAbstractButton* wdbtn = ret.addButton(
+					"&Working directory", QMessageBox::ButtonRole::AcceptRole);
+		ret.addButton("Commm&it", QMessageBox::ButtonRole::AcceptRole);
+		ret.exec();
+		*workDirOnly = (ret.clickedButton() == wdbtn);
 		*fold = false;
 	} else {
-		ret = QMessageBox::question(this, "Apply Patch", "Do you want to "
-		      "import or fold the patch?", "&Cancel", "&Fold", "&Import", 0, 0);
+		QMessageBox ret(QMessageBox::Question,
+			"Apply Patch",
+			"Do you want to import or fold the patch?",
+			{}, this);
+		ret.addButton("&Cancel", QMessageBox::ButtonRole::RejectRole);
+		QAbstractButton* fbtn = ret.addButton(
+					"&Fold", QMessageBox::ButtonRole::AcceptRole);
+		ret.addButton("&Import", QMessageBox::ButtonRole::AcceptRole);
+		ret.exec();
 		*workDirOnly = false;
-		*fold = (ret == 1);
+		*fold = (ret.clickedButton() == fbtn);
 	}
 	return (ret != 0);
 }
@@ -2107,13 +2151,19 @@ void MainImpl::ActFindNext_activated() {
 			return;
 
 		if (endOfDocument) {
-			QMessageBox::warning(this, "Find text - QGit", "Text \"" +
-			             textToFind + "\" not found!", QMessageBox::Ok, 0);
+			QMessageBox(QMessageBox::Warning,
+				"Find text - QGit",
+				"Text \"" + textToFind + "\" not found!",
+				QMessageBox::StandardButton::Ok,
+				this);
 			return;
 		}
-		if (QMessageBox::question(this, "Find text - QGit", "End of document "
-		    "reached\n\nDo you want to continue from beginning?", QMessageBox::Yes,
-		    QMessageBox::No | QMessageBox::Escape) == QMessageBox::No)
+		QMessageBox q(QMessageBox::Question,
+			"Find text - QGit",
+			"End of document reached\n\nDo you want to continue from beginning?",
+			QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No,
+			this);
+		if (q.exec() == QMessageBox::No)
 			return;
 
 		endOfDocument = true;
@@ -2216,19 +2266,20 @@ void MainImpl::ActAbout_activated() {
 	"<nobr>2016-2018 <a href='mailto:rhaschke@techfak.uni-bielefeld.de'>Robert Haschke</a>,</nobr> "
 	"<nobr>2018-2024 <a href='mailto:filipe.rinaldi@gmail.com'>Filipe Rinaldi</a>,</nobr> "
 	"<nobr>2018 <a href='mailto:balbusm@gmail.com'>Mateusz Balbus</a>,</nobr> "
-	"<nobr>2019-2022 <a href='mailto:sebastian@pipping.org'>Sebastian Pipping</a>,</nobr> "
+	"<nobr>2019-2025 <a href='mailto:sebastian@pipping.org'>Sebastian Pipping</a>,</nobr> "
 	"<nobr>2019-2020 <a href='mailto:mvf@gmx.eu'>Matthias von Faber</a>,</nobr> "
     "<nobr>2019 <a href='mailto:Kevin@tigcc.ticalc.org'>Kevin Kofler</a>,</nobr> "
     "<nobr>2020 <a href='mailto:cortexspam-github@yahoo.fr'>Matthieu Muffato</a>,</nobr> "
     "<nobr>2020 <a href='mailto:brent@mbari.org'>Brent Roman</a>,</nobr> "
     "<nobr>2020 <a href='mailto:jjm@keelhaul.demon.co.uk'>Jonathan Marten</a>,</nobr> "
     "<nobr>2020 <a href='mailto:yyc1992@gmail.com'>Yichao Yu</a>,</nobr> "
-    "<nobr>2021 <a href='mailto:wickedsmoke@users.sourceforge.net'>Karl Robillard</a></nobr> "
-    "<nobr>2021 <a href='mailto:vchesn@gmail.com'>Vitaly Chesnokov</a></nobr> "
-    "<nobr>2022 <a href='mailto:bits_n_bytes@gmx.de'>Frank Dietrich</a></nobr> "
-    "<nobr>2023 <a href='mailto:urban82@gmail.com'>Danilo Treffiletti</a></nobr> "
-    "<nobr>2023 <a href='mailto:urban82@gmail.com'>Magnus Holmgren</a></nobr> "
-	"<nobr>2025 <a href='mailto:tim@siosm.fr'>Thimothée Ravier</a></nobr> "
+	"<nobr>2021 <a href='mailto:wickedsmoke@users.sourceforge.net'>Karl Robillard</a>,</nobr> "
+	"<nobr>2021 <a href='mailto:vchesn@gmail.com'>Vitaly Chesnokov</a>,</nobr> "
+	"<nobr>2022 <a href='mailto:bits_n_bytes@gmx.de'>Frank Dietrich</a>,</nobr> "
+	"<nobr>2023 <a href='mailto:urban82@gmail.com'>Danilo Treffiletti</a>,</nobr> "
+	"<nobr>2023 <a href='mailto:urban82@gmail.com'>Magnus Holmgren</a>,</nobr> "
+	"<nobr>2025 <a href='mailto:tim@siosm.fr'>Thimoth&eacute;e Ravier</a>,</nobr> "
+	"<nobr>2025 <a href='mailto:barracuda@macos-powerpc.org'>Sergey Fedorov</a></nobr> "
 	"</p>"
 
 	"<p>This version was compiled against Qt " QT_VERSION_STR "</p>";
