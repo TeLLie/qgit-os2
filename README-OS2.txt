@@ -32,7 +32,7 @@ qgit v2.12
 1. INTRODUCTION
 ===============
 
-Welcome to qgit v2.11 port for OS/2 and eComStation.
+Welcome to qgit v2.12 port for OS/2 and eComStation.
 
 With qgit you will be able to browse revisions history, view patch content
 and changed files, graphically following different development branches.
@@ -127,5 +127,6 @@ Compiled now with Qt v5.15.2
 
 Changelog:
 
+Update to the new upstream version 2.12
 
 Stay tuned.
